@@ -1,0 +1,134 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home Architect Dashboard</title>
+    <style>
+        :root {
+            --primary: #2c3e50; --secondary: #34495e; --success: #27ae60;
+            --warning: #f39c12; --danger: #e74c3c; --light: #f4f7f6;
+        }
+        body { font-family: 'Segoe UI', sans-serif; background-color: var(--light); color: #333; margin: 0; display: flex; flex-direction: column; align-items: center; }
+        header { background-color: var(--primary); color: white; width: 100%; padding: 1.5rem 0; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.1); }
+
+        .container { width: 90%; max-width: 900px; margin-top: 20px; text-align: center; }
+
+        .clock {
+            font-size: 1.8rem;
+            background: #fff;
+            padding: 8px 20px;
+            border-radius: 30px;
+            display: inline-block;
+            margin-bottom: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.05);
+            font-weight: bold;
+            color: var(--primary);
+            font-family: 'Courier New', monospace;
+            border: 2px solid var(--success);
+        }
+
+        .inventory-section { background: white; padding: 20px; border-radius: 15px; box-shadow: 0 4px 10px rgba(0,0,0,0.05); margin-bottom: 30px; }
+        .inventory-tag { background: #dcdde1; padding: 6px 14px; border-radius: 20px; display: inline-block; margin: 5px; font-size: 0.9rem; font-weight: 500; }
+
+        .recipe-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 25px; margin-top: 20px; }
+        .recipe-card { background: white; padding: 25px; border-radius: 15px; box-shadow: 0 10px 20px rgba(0,0,0,0.08); border-top: 6px solid var(--success); text-align: left; transition: transform 0.3s ease; }
+        .recipe-card.almost-card { border-top-color: var(--warning); background-color: #fffdf9; }
+
+        .ingredient-list { list-style: none; padding: 0; margin: 15px 0 0 0; }
+        .ingredient-list li { margin-bottom: 10px; display: flex; align-items: center; font-size: 0.95rem; }
+        .dot { height: 10px; width: 10px; border-radius: 50%; display: inline-block; margin-right: 12px; flex-shrink: 0; }
+        .status-have { background-color: var(--success); box-shadow: 0 0 8px var(--success); }
+        .status-missing { background-color: var(--danger); box-shadow: 0 0 8px var(--danger); }
+
+        .missing-text { color: var(--danger); font-weight: bold; margin-left: 5px; font-size: 0.85rem; }
+        button { background-color: var(--success); color: white; border: none; padding: 15px 40px; font-size: 1.1rem; border-radius: 30px; cursor: pointer; margin: 40px 0; transition: all 0.3s ease; }
+
+        /* כותרת ההמלצות */
+        .section-title-container { margin-top: 40px; }
+        .section-title { color: var(--secondary); font-size: 1.5rem; border-bottom: 2px solid #ddd; padding-bottom: 10px; display: block; margin-top: 5px; }
+        #meal-type-display { color: var(--success); font-weight: 800; text-transform: uppercase; }
+    </style>
+</head>
+<body>
+
+<header><h1>🏠 Smart Kitchen Manager</h1></header>
+
+<div class="container">
+    <!-- אזור המלאי נשאר למעלה -->
+    <div class="inventory-section">
+        <h2 id="greeting">Loading system...</h2>
+        <p><strong>Your Fridge Inventory:</strong></p>
+        <div id="ingredients-list"></div>
+    </div>
+
+    <!-- אזור ההמלצות - כאן העברנו את השעון -->
+    <div class="section-title-container">
+        <div id="live-clock" class="clock">00:00:00</div>
+        <h3 class="section-title">
+            Today's <span id="meal-type-display">...</span> Recommendations 👨‍🍳
+        </h3>
+        <div id="recipe-results" class="recipe-grid"></div>
+    </div>
+
+    <button onclick="fetchRecipe()">🔄 Refresh Inventory & Menu</button>
+</div>
+
+<script>
+    function startClock() {
+        const clockDiv = document.getElementById('live-clock');
+        setInterval(() => { clockDiv.innerText = "🕒 " + new Date().toLocaleTimeString('en-GB'); }, 1000);
+    }
+
+async function fetchRecipe() {
+        try {
+            const response = await fetch('/api/');
+            const data = await response.json();
+
+            document.getElementById('meal-type-display').innerText = data.meal_type;
+            document.getElementById('greeting').innerText = data.greeting;
+
+            const invDiv = document.getElementById('ingredients-list');
+            invDiv.innerHTML = data.inventory.map(i => `<span class="inventory-tag">${i}</span>`).join('');
+
+            const grid = document.getElementById('recipe-results');
+            grid.innerHTML = '';
+
+            // מעבר על כל המתכונים שהגיעו מהשרת
+            data.recipes.forEach(r => {
+                const isComplete = r.missing.length === 0;
+
+                grid.innerHTML += `
+                    <div class="recipe-card ${isComplete ? '' : 'almost-card'}">
+                        <h3>${r.name}</h3>
+                        <p style="color: ${isComplete ? 'var(--success)' : 'var(--danger)'}; font-weight: bold; margin:0;">
+                            ${isComplete ? '✅ Ready to cook!' : '⚠️ Missing ' + r.missing.length + ' ingredients'}
+                        </p>
+                        <ul class="ingredient-list">
+                            ${r.ingredients.map(ing => {
+                                const isMissing = r.missing.includes(ing.toLowerCase());
+                                return `
+                                    <li>
+                                        <span class="dot ${isMissing ? 'status-missing' : 'status-have'}"></span>
+                                        ${ing} ${isMissing ? '<span class="missing-text">(Missing)</span>' : ''}
+                                    </li>`;
+                            }).join('')}
+                        </ul>
+                    </div>
+                `;
+            });
+
+            if (data.recipes.length === 0) {
+                grid.innerHTML = `<p style="grid-column: 1/-1;">No recipes found for this category.</p>`;
+            }
+
+        } catch (error) {
+            console.error('Error:', error);
+            document.getElementById('greeting').innerText = "Connection Error ❌";
+        }
+    }
+
+    window.onload = () => { startClock(); fetchRecipe(); };
+</script>
+</body>
+</html>
