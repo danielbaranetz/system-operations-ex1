@@ -47,25 +47,23 @@ def get_recipe_suggestion():
         time_greeting, meal_type = "Good evening", "Dinner"
     else:
         time_greeting, meal_type = "Late night", "Midnight Snack"
-        # ... (בתוך פונקציית get_recipe_suggestion, אחרי meal_type) ...
 
     relevant_recipes = RECIPES_BY_TIME.get(meal_type, {})
-    all_suggestions = []  # רשימה אחת לכל המתכונים
+    all_suggestions = []
 
     for name, req_items in relevant_recipes.items():
         req_set = set(req_items)
         missing = req_set - inventory_set
 
-        # אנחנו מוסיפים כל מתכון, ושומרים את רשימת המצרכים שחסרים לו
         all_suggestions.append({
             "name": name,
             "ingredients": req_items,
-            "missing": list(missing)  # אם הרשימה ריקה, סימן שהכל קיים
+            "missing": list(missing)
         })
 
     return {
         "greeting": f"{time_greeting}, {USER_NAME}!",
         "meal_type": meal_type,
-        "recipes": all_suggestions,  # הרשימה המאוחדת
+        "recipes": all_suggestions,
         "inventory": [i.title() for i in ingredients]
     }
